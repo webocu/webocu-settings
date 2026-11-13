@@ -1,0 +1,8 @@
+{
+  "name": "webocu.settings.service",
+  "version": "0.3.3",
+  "description": "Privileged helper for WebOCU Settings",
+  "main": "service.js",
+  "license": "MIT",
+  "private": true
+}

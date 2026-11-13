@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # JS syntax, manifests, version consistency, i18n, guard checks.
+      - name: Lint
+        run: make lint
+
+      # Builds the package in the ares container; the version is left alone.
+      - name: Build the .ipk
+        run: make build
+
+      - name: Upload the .ipk
+        uses: actions/upload-artifact@v4
+        with:
+          name: webocu.settings-ipk
+          path: dist/*.ipk
+          if-no-files-found: error
+
+# The headless smoke test (make smoke) is not run here yet: it has known
+# failures. Enable it as a further step once make smoke is green.

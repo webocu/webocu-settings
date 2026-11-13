@@ -1,0 +1,19 @@
+# Text files are normalised to LF in the repository and checked out with LF.
+# Some sources were saved with CRLF by a Windows editor, which would turn every
+# touch into a whole-file diff; git add --renormalize . brings them in line.
+* text=auto eol=lf
+
+# Binary artwork and packages: never touched by line-ending conversion or diffs.
+*.png binary
+*.gif binary
+*.ico binary
+*.ipk binary
+*.zip binary
+
+# The Makefile runs under bash in WSL. A Windows editor once saved it with CRLF,
+# which turned the whole file into a diff; pin it to LF so git normalises it on
+# commit and always checks it out with LF.
+Makefile text eol=lf
+# The toolchain scripts run under sh inside the containers, where a CR at the
+# end of a line breaks commands and `set -e` ("set: illegal option -").
+tools/*.sh text eol=lf

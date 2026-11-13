@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an option or a change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: The problem or the missing option, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed behaviour
+      description: Where it would live in the panel and how it would work from the remote.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

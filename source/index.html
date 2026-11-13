@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WebOCU Settings</title>
+  <!-- webOS TV always exposes a 1920x1080 logical viewport -->
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- Transparent layer: whatever the TV shows underneath stays visible.
+       In a desktop browser it renders a placeholder pattern instead. -->
+  <div id="backdrop" class="backdrop"></div>
+
+  <!-- UI layer, laid out for 1920x1080 and scaled with --ui-scale -->
+  <div id="ui" class="ui">
+
+    <!-- Settings panel -->
+    <aside id="menu" class="menu" role="dialog" aria-modal="false" aria-label="Settings" aria-hidden="true">
+      <div class="menu__panel">
+        <!-- Rail: the clock stands in the band of the heading, the section
+             icons below it, the date at the foot of the column. -->
+        <nav id="rail" class="rail" aria-label="Sections">
+          <div id="railClock" class="rail__clock" role="status" aria-live="off"></div>
+          <div id="railItems" class="rail__items" role="tablist"></div>
+          <div id="railDate" class="rail__date"></div>
+        </nav>
+
+        <div class="pane">
+          <header class="pane__head">
+            <h1 id="paneTitle" class="pane__title"></h1>
+            <p id="paneSub" class="pane__sub"></p>
+          </header>
+          <div id="rows" class="rows" role="tabpanel"></div>
+          <footer id="paneHint" class="pane__hint"></footer>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Confirmation for destructive actions -->
+    <div id="dialog" class="dialog" role="alertdialog" aria-hidden="true">
+      <div class="dialog__box">
+        <p id="dialogText" class="dialog__text"></p>
+        <div class="dialog__buttons">
+          <div id="dialogCancel" class="dialog__btn"></div>
+          <div id="dialogConfirm" class="dialog__btn dialog__btn--danger"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- Visual stand-in for "screen off" while developing in a browser -->
+  <div id="screenCover" class="screen-cover" aria-hidden="true"></div>
+
+  <script src="js/keys.js"></script>
+
+  <!-- Locale files: comment out languages you don't need to reduce page size.
+       Each locale adds ~15-20KB. English (en) is required as fallback. -->
+  <script src="locales/en.js"></script>
+  <script src="locales/ru.js"></script>
+  <script src="locales/de.js"></script>
+  <script src="locales/fr.js"></script>
+  <script src="locales/es.js"></script>
+  <script src="locales/pt.js"></script>
+  <script src="locales/pl.js"></script>
+  <script src="locales/uk.js"></script>
+  <script src="locales/sr.js"></script>
+  <script src="locales/hr.js"></script>
+  <script src="locales/bg.js"></script>
+  <script src="locales/zh.js"></script>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/luna.js"></script>
+  <script src="js/platform.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/dialog.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!-- =========================================================================
+     Text of App properties -> About. This is a plain HTML fragment, not a page:
+     it is read at runtime (Platform.loadText) and dropped into the panel, so it
+     can be edited without touching any JavaScript.
+
+     Keep it language-independent — names, links and handles read the same in
+     every language, and the panel switches languages around this text.
+
+     {APP_ID} is replaced with the application ID the TV runs the app under.
+
+     Tags the stylesheet knows: h2, p, ul/li, b, a, code (see .about in
+     css/app.css). Links are not clickable on a TV, so write every address out
+     in full as the caption. The href is deliberately a dead one (the app id),
+     and menu.js swallows a click on it.
+     ========================================================================= -->
+
+<p>WebOCU — WebOS Custom UI. An overlay settings panel for webOS TV</p>
+
+<h2>Author</h2>
+<p>etix</p>
+
+<h2>License</h2>
+<p><a href="webocu.settings">MIT License</a> — free to use, modify and distribute, with attribution</p>
+<h2>Project GitHub</h2>
+<p><a href="webocu.settings">https://github.com/webocu/webocu-settings</a></p>
+<h2>Homebrew Channel</h2>
+<p><a href="webocu.settings">https://webocu.github.io</a></p>
+<h2>Related project</h2>
+<p><a href="webocu.settings">https://github.com/webocu/webocu-dock</a></p>
+<h2>Community</h2>
+<p><a href="webocu.settings">4pda.to/forum</a></p>
+<p><a href="webocu.settings">webos-forums.ru</a></p>
+<p><a href="webocu.settings">webosbrew.org</a></p>
+
+<h2>Application ID</h2>
+<p><code id="currentAppId">{APP_ID}</code></p>

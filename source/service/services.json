@@ -1,0 +1,10 @@
+{
+  "id": "webocu.settings.service",
+  "description": "Privileged helper for WebOCU Settings",
+  "services": [
+    {
+      "name": "webocu.settings.service",
+      "description": "Power, screen and settings calls that need system privileges"
+    }
+  ]
+}

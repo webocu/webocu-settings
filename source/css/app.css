@@ -1,0 +1,828 @@
+/* =========================================================================
+   WebOCU Settings — layout for 1920x1080 (webOS TV / Chromium 87)
+
+   TV performance rules kept here:
+   - animate transform and opacity only;
+   - no box-shadow on moving elements;
+   - backdrop-filter is off by default (expensive on TV GPUs).
+   ========================================================================= */
+
+:root {
+  --ui-scale: 1;
+  /* Solid until App properties -> Opacity says otherwise (it rewrites this on
+     <html>). Never 0: the lowest stop of the slider is 30%. */
+  --ui-opacity: 1;
+
+  --panel-1: rgba(16, 20, 28, 0.94);
+  --panel-2: rgba(10, 13, 19, 0.97);
+  --rail-bg: rgba(8, 10, 15, 0.6);
+
+  --text: #f2f5f9;
+  --text-dim: #9aa4b4;
+  --text-mute: #66707f;
+
+  /* Highlight colour of the whole panel. App properties -> Accent colour
+     rewrites it on <html>, so this is the value of a fresh install (magenta). */
+  --accent: #f21b9c;
+  --danger: #e0574d;
+  --line: rgba(255, 255, 255, 0.08);
+
+  --focus: #ffffff;
+  --radius: 18px;
+
+  /* Surfaces that the theme option repaints (see the palettes at the end). */
+  --hover: rgba(255, 255, 255, 0.1);
+  --hover-soft: rgba(255, 255, 255, 0.08);
+  --track: rgba(255, 255, 255, 0.2);
+  --track-hot: rgba(255, 255, 255, 0.32);
+  --knob: #ffffff;
+  --text-hot: #ffffff;
+  --dialog-1: #151a24;
+  --dialog-2: #0d1117;
+  --scrim: rgba(3, 5, 8, 0.62);
+  --toast-bg: rgba(5, 7, 11, 0.88);
+  --danger-bg: rgba(224, 87, 77, 0.22);
+  --danger-text: #ffd9d5;
+
+  /* Width of the panel. App properties -> General -> Panel width rewrites this on
+     <html> with one of its fifteen stops, 15% to 85% of the 1920 canvas; 576px is
+     30% of it (DEF_WIDTH in settings.js), so this is what a fresh install looks
+     like. */
+  --panel-w: 576px;
+  /* How much of the screen the panel leaves free above and below itself
+     (App properties -> Panel insets). Nothing by default: a fresh install is the
+     full-height panel this app always had. */
+  --pad-top: 0px;
+  --pad-bottom: 0px;
+  /* How solid the picture behind each column is: the rows (App properties ->
+     General -> Main background image) and the rail (-> Widgets background image),
+     a slider and a variable each. Zero here and data-bg="off" / data-bg-rail="off"
+     on <html> go together: a fresh install is painted from the palette alone. */
+  --bg-opacity: 0;
+  --bg-opacity-rail: 0;
+  --rail-w: 132px;
+  --row-h: 96px;
+  /* Metrics of everything inside the pane, in one place because the narrow stops
+     of the width slider have to shrink them together (see
+     html[data-width="narrow"] under the panel). */
+  --pane-pad: 40px;
+  --title-size: 42px;
+  --sub-size: 24px;
+  --label-size: 30px;
+  --safe: 60px;
+  /* How far the marker of the active section is inset when the panel is docked
+     left: there the rail touches the edge of the screen, and the first few pixels
+     of a TV panel are the ones overscan cuts off. */
+  --marker-safe: 10px;
+  /* Height of the heading band. The rail keeps the clock in the same band, so
+     both columns are cut by one line: the icons start under the heading. */
+  --head-h: 160px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Transparent by default so the underlying TV picture shows through
+   (appinfo.json has "transparent": true). */
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font-family: "LG Smart UI", "Museo Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 28px;
+  line-height: 1.3;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.backdrop { position: fixed; inset: 0; background: transparent; }
+
+/* Desktop browser and emulator: fake "content underneath" so contrast can be
+   judged. Gradients rather than a file -- nothing to ship, nothing to keep in
+   step with the layout. Warm throughout: amber and ember glows over broad
+   diagonal bands, so a panel that is cool and grey at every accent has something
+   to stand off. Never drawn on the TV, where the video shows through instead. */
+html[data-platform="browser"] .backdrop {
+  background:
+    radial-gradient(circle at 26% 32%, rgba(255, 148, 42, 0.38), transparent 46%),
+    radial-gradient(circle at 68% 72%, rgba(214, 74, 46, 0.32), transparent 44%),
+    radial-gradient(circle at 84% 14%, rgba(247, 196, 122, 0.22), transparent 38%),
+    repeating-linear-gradient(45deg, #241a13 0 40px, #17100b 40px 80px);
+}
+
+/* On the TV the backdrop only exists while the panel is up (menu.js and app.js
+   keep data-shown): a closed or never opened app must not hold a full-screen
+   layer that catches the pointer meant for whatever is in front. The browser
+   keeps its pattern, which is only there to judge the panel against. */
+html[data-platform="webos"][data-shown="off"] .backdrop { display: none; }
+
+/* ---------- UI layer ---------- */
+/* Everything of ours lives in here, so one opacity on the layer is the
+   transparency of the whole app — panel, dialog and balloon fade together
+   instead of the panel alone going see-through while a toast stays solid.
+   The layer already has a transform, so it is composited either way: the
+   opacity costs nothing extra and nothing animates it. */
+.ui {
+  position: fixed; top: 0; left: 0;
+  width: 1920px; height: 1080px;
+  transform: scale(var(--ui-scale));
+  transform-origin: 0 0;
+  opacity: var(--ui-opacity);
+  pointer-events: none;              /* enabled per interactive element */
+}
+.ui * { pointer-events: auto; }
+
+/* ---------- Panel ---------- */
+/* The two insets are the top and the bottom of the box, not padding inside it:
+   everything in the panel is laid out against its own edges, so shortening the
+   box is what makes the rail and the rows follow. */
+.menu {
+  position: absolute; right: 0;
+  top: var(--pad-top); bottom: var(--pad-bottom);
+  width: var(--panel-w);
+  visibility: hidden;
+}
+.menu.is-open { visibility: visible; }
+
+/* The hairline is what separates the panel from the video behind it: over a
+   bright picture the gradient alone has no edge to speak of. It runs round all
+   four sides, as it does on the window of WebOCU Dock, not on the inner edge
+   alone: the top and the bottom are the lines that show where a panel shortened
+   by the insets ends, and the two outer corners stay square, so the line on the
+   edge of the screen costs nothing there.
+
+   overflow: hidden is what holds the two columns inside the rounded corners.
+   Each of them used to clip its own background picture to the radius it has
+   itself, and one of them never has one: docked left the pane is the column
+   against the rounded edge, .pane sets no border-radius, and the picture ran
+   square through the curve. Clipping here instead is the whole panel's rule,
+   so it holds for either dock side and for anything drawn in the columns
+   later. Nothing inside is meant to paint outside the panel -- the dialog and
+   the toast are siblings of .menu, not children of it. */
+.menu__panel {
+  position: absolute; inset: 0;
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--radius) 0 0 var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-1), var(--panel-2));
+  /* The start of the entrance (App properties -> Panel -> Entrance effect, data-panel-effect
+     on <html>) and where it ends. Every state spells the same list of functions, translate
+     and scale, so a transition goes from one to the other function by function. By
+     default the panel comes out from behind the edge it stands at. */
+  transform: translate(100%, 0) scale(1);
+  opacity: 0;
+  transition: transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 200ms linear;
+}
+.menu.is-open .menu__panel { transform: translate(0, 0) scale(1); opacity: 1; }
+/* Put back to the start without a transition while the app is hidden (menu.js rest()). */
+.menu.is-snap .menu__panel { transition: none; }
+
+/* The four narrow stops of App properties -> General -> Panel width (18, 21, 24
+   and 27 per cent of the screen): <html> carries data-width="narrow" there,
+   "full" at the other sixteen. At 346px the metrics of a 1920 layout simply do
+   not fit — the icon rail alone took a third of the panel and a two-word label
+   pushed the switch off the edge. Everything inside goes one size down, the rail
+   included, and the pane keeps some 240px for the rows: enough for the switches,
+   the sliders and the short labels, which is what the narrowest stop is for. */
+html[data-width="narrow"] {
+  --pane-pad: 24px;
+  --title-size: 32px;
+  --sub-size: 20px;
+  --label-size: 23px;
+  --rail-w: 104px;
+  --row-h: 84px;
+}
+/* 14px instead of 20px between the label and what it controls: the six pixels
+   are the difference between "Контрастная тема" on two lines and that word cut
+   in half on the narrowest stop. */
+html[data-width="narrow"] .row { gap: 14px; }
+html[data-width="narrow"] .rail__clock { font-size: calc(21px * var(--clock-scale, 1)); }
+html[data-width="narrow"] .rail__item { height: 100px; }
+html[data-width="narrow"] .rail__icon { font-size: 32px; }
+html[data-width="narrow"] .rail__label { font-size: 15px; padding: 0 6px; }
+html[data-width="narrow"] .rail__date { font-size: calc(16px * var(--date-scale, 1)); }
+html[data-width="narrow"] .option { font-size: 23px; height: 60px; padding: 0 16px; }
+html[data-width="narrow"] .info { font-size: 22px; }
+/* The switch shrinks too: those 16 pixels are what keeps a word like
+   "Контрастная" on one line next to it instead of broken across two. */
+html[data-width="narrow"] .toggle { width: 58px; height: 29px; border-radius: 14px; }
+html[data-width="narrow"] .toggle::after { top: 4px; left: 4px; width: 21px; height: 21px; }
+html[data-width="narrow"] .toggle.is-on::after { transform: translateX(29px); }
+
+/* Docked to the left instead (App properties -> Panel position). Only the edge
+   moves: the columns inside keep their order, so the icon rail stays against the
+   outer edge of the screen and the chevrons still point deeper. */
+html[data-side="left"] .menu { right: auto; left: 0; }
+html[data-side="left"] .menu__panel {
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transform: translate(-100%, 0) scale(1);
+}
+html[data-side="left"] .menu.is-open .menu__panel { transform: translate(0, 0) scale(1); }
+
+/* The other entrances. They come after the mirror rules above, which they replace, and they
+   lose to the open state, which is the more specific. The panel stands against an edge of the
+   screen, so the opposite edge is a screen's width away (1920, the width of the layout:
+   the whole layer is scaled as one), and the top and the bottom are the panel's own height
+   plus the inset that keeps it off that edge (--pad-top / --pad-bottom, on <html>). */
+.menu__panel { --opp-x: -1920px; }
+html[data-side="left"] .menu__panel { --opp-x: 1920px; }
+html[data-panel-effect="opposite"] .menu__panel { transform: translate(var(--opp-x), 0) scale(1); }
+html[data-panel-effect="top"] .menu__panel { transform: translate(0, calc(-100% - var(--pad-top))) scale(1); }
+html[data-panel-effect="bottom"] .menu__panel { transform: translate(0, calc(100% + var(--pad-bottom))) scale(1); }
+/* In place, and only the opacity moves; or grown a little from the edge it stands at. */
+html[data-panel-effect="fade"] .menu__panel { transform: translate(0, 0) scale(1); }
+html[data-panel-effect="pop"] .menu__panel { transform: translate(0, 0) scale(0.85); transform-origin: 100% 50%; }
+html[data-side="left"][data-panel-effect="pop"] .menu__panel { transform-origin: 0 50%; }
+/* There at once. */
+html[data-panel-effect="none"] .menu__panel { transition: none; }
+html[data-side="left"] .rail { border-radius: 0; }
+/* The marker of the active section stays to the left of the icons whichever edge
+   the panel is docked to: it is read as "you are here", and having it jump to the
+   other side of the icon made the whole rail look mirrored. Docked left it sits
+   in the screen's own left margin, so it is inset by --marker-safe to keep it
+   clear of TV overscan. */
+html[data-side="left"] .rail__item.is-active::before { left: var(--marker-safe); }
+
+/* Pictures over the palette behind the two columns (App properties -> General ->
+   Main background image for the rows, Widgets background image for the rail, both
+   at nothing in a fresh install). Four files, one per column per theme, and the
+   theme is the mode: the contrast switch keeps its own palette for everything drawn
+   on top. The four files are art rather than anything generated: replacing one of
+   them is a change of one file and no code at all.
+
+   A column at a time, because the two are two settings: --bg-opacity with
+   data-bg for the rows, --bg-opacity-rail with data-bg-rail for the rail. Only the
+   opacity and the file differ, so everything else about the layer is written once,
+   for both.
+
+   Scaled to the box, both axes at once, and that is the whole of it. The panel is
+   a different shape at every width stop and at every pair of insets, so the
+   picture is stretched or squeezed to fit — evenly, every part of it by the same
+   amount. It used to be cut into pieces instead — a sliced border image, two edges
+   drawn at their own size and the middle stretched over the rest — which held the
+   edges to a fixed width but drew the one picture at two scales at once: straight
+   lines bent where the pieces met, and the pattern bunched up along both borders.
+
+   A file drawn at the size its column has on a fresh install (132x1080 for the
+   rail, 559x1080 for the rows) therefore needs no scaling at the default width,
+   and the stops around it are a gentle stretch either way. Nothing enforces those
+   proportions: any picture is scaled to the box, so a photograph works as well.
+
+   The picture is a layer of its own and not the background of the column, because
+   how solid it is has to be a setting: opacity applies to a box, and a
+   background-image cannot be faded on its own. The slider is what writes the
+   variable; the attribute goes off at the bottom of its range, so a column whose
+   slider is down has no layer to composite at all. */
+html[data-bg="on"] .pane,
+html[data-bg-rail="on"] .rail { position: relative; }
+html[data-bg="on"] .pane::before,
+html[data-bg-rail="on"] .rail::before {
+  content: "";
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  /* Over the palette colour of the column and under everything drawn on it (the
+     bands below are positioned for exactly that). The rounded corners are not
+     this layer's business: .menu__panel clips them for both columns at once,
+     which is the only place that knows which edge is the docked one. */
+  z-index: 0;
+  /* The picture fills the layer whatever shape the layer is: 100% on both axes
+     rather than cover, because cover would crop it, and a column that is a tall
+     strip would be showing a sliver of the middle. */
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+html[data-bg="on"] .pane::before {
+  opacity: var(--bg-opacity);
+  background-image: url("../img/pane-dark.png");
+}
+html[data-bg-rail="on"] .rail::before {
+  opacity: var(--bg-opacity-rail);
+  background-image: url("../img/rail-dark.png");
+}
+html[data-bg="on"][data-theme="light"] .pane::before { background-image: url("../img/pane-light.png"); }
+html[data-bg-rail="on"][data-theme="light"] .rail::before { background-image: url("../img/rail-light.png"); }
+/* The contents of a column with a picture behind it: positioned only so that they
+   paint above it. Nothing moves — the offsets stay where the layout put them. */
+html[data-bg-rail="on"] .rail__clock,
+html[data-bg-rail="on"] .rail__items,
+html[data-bg-rail="on"] .rail__date,
+html[data-bg="on"] .pane__head,
+html[data-bg="on"] .rows,
+html[data-bg="on"] .pane__hint { position: relative; z-index: 1; }
+
+/* Section rail: clock in the heading band, icons under it, date at the foot */
+.rail {
+  flex: 0 0 var(--rail-w);
+  display: flex; flex-direction: column;
+  padding: 0 0 28px;
+  background: var(--rail-bg);
+  border-radius: var(--radius) 0 0 var(--radius);
+  border-right: 1px solid var(--line);
+}
+/* Five sizes of each band (Settings: Clock and date, XS S M L XL, set on <html> by
+   data-clock-size / data-date-size): the scale multiplies the type of the clock and of the
+   date, in the narrow metrics as well. The band of the clock keeps its height, which is the
+   heading's, so the largest step still stands inside it. */
+html[data-clock-size="xs"] { --clock-scale: 0.8; }
+html[data-clock-size="s"] { --clock-scale: 0.9; }
+html[data-clock-size="l"] { --clock-scale: 1.1; }
+html[data-clock-size="xl"] { --clock-scale: 1.25; }
+html[data-date-size="xs"] { --date-scale: 0.8; }
+html[data-date-size="s"] { --date-scale: 0.9; }
+html[data-date-size="l"] { --date-scale: 1.1; }
+html[data-date-size="xl"] { --date-scale: 1.25; }
+/* Same height and the same rule underneath as the heading of the pane, so the
+   two columns share one line and the icons begin below it. */
+.rail__clock {
+  flex: 0 0 auto;
+  height: var(--head-h);
+  padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+  /* "12:05 AM" is the widest the clock ever gets: it has to fit the rail with
+     the TV font too, hence the size and the padding that catches the rest. */
+  font-size: calc(27px * var(--clock-scale, 1)); color: var(--text);
+  white-space: nowrap; overflow: hidden;
+  border-bottom: 1px solid var(--line);
+}
+/* min-height + overflow because the insets can leave the rail less room than the
+   icons ask for: the band gives way (the items shrink, see .rail__item) and
+   whatever still does not fit is cut inside the panel instead of spilling over
+   the picture. */
+.rail__items {
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; padding-top: 18px;
+}
+.rail__date {
+  flex: 0 0 auto;
+  padding: 16px 6px 0;
+  text-align: center;
+  font-size: calc(19px * var(--date-scale, 1)); color: var(--text-mute);
+  /* "Воскресенье" is the longest this line ever gets, and on the narrow stops
+     the rail is 104px: clipped with an ellipsis rather than spilling out of the
+     column if the font on the TV is wider than the one here. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* A panel shortened past ~660px by the insets: the clock, the date and the
+   labels go, the icons stay. Everything the rail loses here is decoration — the
+   one thing it may not lose is an icon, because the section at its foot is the
+   way back into the setting that made the panel this short. */
+html[data-rail="tight"] .rail__clock,
+html[data-rail="tight"] .rail__date,
+html[data-rail="tight"] .rail__label { display: none; }
+html[data-rail="tight"] .rail__item { min-height: 52px; }
+html[data-rail="tight"] .rail__item.is-active::before { top: 12px; bottom: 12px; }
+
+/* The same three pieces, taken away because they were asked to go rather than
+   because the panel ran out of room (Settings: appTimeFormat/appDateFormat set to
+   the off end of their lists, appRailLabels off). Each band goes whole, its rule
+   and its padding with it, so the icons move up into the space instead of
+   sitting under an empty strip.
+
+   Colour and weight come after the data-bg rules further up, which only stack
+   the bands over the picture and say nothing about how they are painted. */
+html[data-clock="off"] .rail__clock { display: none; }
+html[data-date="off"] .rail__date { display: none; }
+html[data-labels="off"] .rail__label { display: none; }
+/* Room the labels leave behind: without them an item is an icon in 116px of
+   nothing, so the rail is packed the way the tight one is. */
+html[data-labels="off"] .rail__item { height: 84px; min-height: 60px; }
+
+/* Painted in the accent instead of the text colour, one band at a time. Not
+   --accent-strong: these sit on the panel's own background, where the plain
+   accent is the colour the active section and the focus ring already use. */
+html[data-clock-accent="on"] .rail__clock { color: var(--accent); }
+html[data-date-accent="on"] .rail__date { color: var(--accent); }
+/* Both bands together: a heavy clock over a light date is not a look anyone
+   picks on purpose, so it is one switch. */
+html[data-clock-bold="on"] .rail__clock,
+html[data-clock-bold="on"] .rail__date { font-weight: 700; }
+
+.rail__item {
+  position: relative;
+  /* Shrinkable down to 72px, which is an icon and its label and nothing else:
+     that is what lets a panel shortened by the insets keep every section on the
+     rail instead of pushing the last of them past the bottom edge. */
+  flex: 0 1 auto;
+  height: 116px; min-height: 72px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  color: var(--text-mute);
+  transition: color 120ms linear, background-color 120ms linear;
+}
+/* The app's own section: pushed to the foot of the rail and fenced off from
+   the sections that change the TV (Settings.sections -> pinBottom). */
+.rail__item--bottom { margin-top: auto; border-top: 1px solid var(--line); }
+.rail__icon { font-size: 40px; line-height: 1; }
+/* The label has to stay inside the focus ring below, so the text is padded away
+   from the edges and cut rather than allowed to spill out of the ring. The short
+   labels in i18n.js are picked to fit without being cut at all. */
+.rail__label {
+  max-width: 100%;
+  padding: 0 14px;
+  font-size: 17px; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rail__item.is-active { color: var(--text); }
+.rail__item.is-active::before {
+  content: ""; position: absolute; left: 0; top: 22px; bottom: 22px;
+  width: 5px; border-radius: 0 3px 3px 0; background: var(--accent);
+}
+.rail__item.is-focused { color: var(--text-hot); background: var(--hover); }
+/* Clear of the marker of the active section on one side and of the neighbouring
+   item on the other: two rings never touch. */
+.rail__item.is-focused::after {
+  content: ""; position: absolute; inset: 6px 8px;
+  border: 3px solid var(--focus); border-radius: 14px;
+}
+
+/* Content pane */
+.pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; padding: 0 0 28px; }
+.pane__head { height: var(--head-h); padding: 44px var(--pane-pad) 0; border-bottom: 1px solid var(--line); }
+/* The band has a fixed height, so neither line may wrap: on a narrow panel a
+   second line of the title used to push the subtitle through the rule and into
+   the first row. Cut with an ellipsis instead, the way the hint already is. */
+.pane__title {
+  font-size: var(--title-size); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane__sub {
+  margin-top: 8px; font-size: var(--sub-size); color: var(--text-mute); min-height: 30px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane__hint {
+  padding: 18px var(--pane-pad) 0; font-size: 21px; color: var(--text-mute);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.rows { flex: 1 1 auto; overflow: hidden; position: relative; }
+.rows__scroll { position: absolute; left: 0; right: 0; top: 0; padding: 12px 0; transition: transform 180ms ease-out; }
+
+/* How much of a level is on screen and where in it the view sits. It is a readout
+   and not a control: nothing here takes a click, the focus and the wheel do the
+   moving. It appears the moment a scroll actually moves the list and goes three
+   seconds after the last one (see showScrollBar), so a level that fits on screen
+   never shows one and a level that does not shows it only while it is being read.
+   The fade out is slower than the fade in: coming up it has to keep up with the
+   movement, going away it should not be the thing that catches the eye.
+   6px inside the pane, so it clears the text of the rows and the focus ring. */
+.rows__bar {
+  position: absolute; top: 6px; bottom: 6px; right: 6px; width: 6px;
+  border-radius: 3px;
+  background: var(--track);
+  opacity: 0;
+  transition: opacity 400ms linear;
+  pointer-events: none;
+}
+.rows__bar.is-on { opacity: 1; transition-duration: 120ms; }
+.rows__thumb {
+  position: absolute; left: 0; right: 0;
+  border-radius: 3px;
+  background: var(--text-mute);
+  transition: top 180ms ease-out;
+}
+
+/* Setting row */
+.row {
+  position: relative;
+  min-height: var(--row-h);
+  padding: 0 var(--pane-pad);
+  display: flex; align-items: center;
+  gap: 20px;
+  color: var(--text);
+}
+/* min-width: 0 so a long label wraps inside the row instead of pushing the
+   switch or the value off the narrow panel, and break-word so that a single
+   word too long for the line (Russian is full of them: "Контрастная") breaks
+   instead of sliding out under the switch. */
+.row__label {
+  flex: 1 1 auto; min-width: 0;
+  font-size: var(--label-size);
+  overflow-wrap: break-word;
+}
+.row__value {
+  flex: 0 1 auto; min-width: 0; max-width: 330px;
+  font-size: 28px; color: var(--text-dim); text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* State that is on: a connected bluetooth device, for example. */
+.row__value--on { color: var(--accent); }
+.row__chev { flex: 0 0 auto; font-size: 28px; color: var(--text-mute); }
+/* Reorder row (App properties -> Widgets). The arrows are the affordance for the
+   place in the list: the row has no value, where it sits is the value. Held, they
+   take the accent — the same colour the ring turns (.row.is-editing below). */
+.row__grab { flex: 0 0 auto; font-size: 28px; color: var(--text-mute); }
+.row.is-editing .row__grab { color: var(--accent); }
+/* The switch of the same row says whether the rail carries the section at all, so
+   there are two controls on it and the gap between them is tighter than the gap
+   after the label. A section switched off is still readable — it is a row that can
+   be moved and switched back — but plainly the odd one out in the list. */
+.row--reorder .toggle { margin-left: 8px; }
+.row--off .row__label,
+.row--off .row__grab { opacity: 0.5; }
+/* Colour swatch of a palette option (App properties -> Accent colour): the row
+   carries the chosen colour, the expanded list carries all sixteen. */
+.swatch {
+  display: inline-block;
+  width: 26px; height: 26px;
+  margin-right: 14px;
+  border-radius: 50%;
+  vertical-align: -4px;
+  border: 1px solid var(--line);
+}
+.row.is-focused { background: var(--hover-soft); }
+.row.is-focused .row__value,
+.row.is-focused .row__grab,
+.row.is-focused .row__chev { color: var(--text); }
+.row.is-focused .row__value--on { color: var(--accent); }
+/* 6px keeps 12px of air between the rings of two neighbouring rows, and the
+   24px on the sides put the row text 16px inside the ring instead of under it. */
+.row.is-focused::after {
+  content: ""; position: absolute; inset: 6px calc(var(--pane-pad) - 16px);
+  border: 3px solid var(--focus); border-radius: 14px;
+  pointer-events: none;
+}
+.row.is-editing::after { border-color: var(--accent); }
+
+/* Slider takes two lines: the label on top, the track underneath. There is no
+   number on the row — the filled part of the track is the readout. */
+.row--slider { flex-direction: column; align-items: stretch; gap: 16px; padding: 22px var(--pane-pad); }
+.row--slider .row__top { display: flex; align-items: baseline; gap: 20px; }
+.row--slider .slider { flex: 1 1 auto; width: 100%; }
+
+/* Toggle */
+.toggle {
+  flex: 0 0 auto;
+  width: 72px; height: 36px;
+  border-radius: 18px;
+  background: var(--track);
+  position: relative;
+  transition: background-color 140ms linear;
+}
+.toggle::after {
+  content: ""; position: absolute; top: 4px; left: 4px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--knob);
+  transition: transform 140ms ease-out;
+}
+.toggle.is-on { background: var(--accent); }
+.toggle.is-on::after { transform: translateX(36px); }
+
+/* Slider */
+.slider { flex: 0 0 240px; height: 8px; border-radius: 4px; background: var(--track); position: relative; }
+.slider__fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+.slider__knob {
+  position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; background: var(--knob);
+  transition: transform 120ms ease-out;
+}
+.row.is-editing .slider__knob { transform: scale(1.25); }
+.row.is-editing .slider { background: var(--track-hot); }
+
+/* Expanded option list */
+.options { padding: 8px var(--pane-pad) 18px var(--pane-pad); }
+.option {
+  position: relative;
+  height: 68px; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 27px; color: var(--text-dim);
+  border-radius: 12px;
+}
+/* The ring of an option sits on its box, so the boxes need a gap of their own:
+   without it the ring of the focused option runs into the one above. */
+.option + .option { margin-top: 8px; }
+.option__check { color: var(--accent); font-size: 26px; opacity: 0; }
+.option.is-selected { color: var(--text); }
+.option.is-selected .option__check { opacity: 1; }
+.option.is-focused { color: var(--text-hot); background: var(--hover); }
+.option.is-focused::after {
+  content: ""; position: absolute; inset: 0;
+  border: 3px solid var(--focus); border-radius: 12px;
+}
+
+/* Group subheading and info block */
+.group { padding: 26px var(--pane-pad) 8px; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-mute); }
+.info { padding: 12px var(--pane-pad); font-size: 25px; color: var(--text-dim); }
+.info b { color: var(--text); font-weight: 600; }
+/* A paragraph under paired information: without the gap it reads as the
+   continuation of the last line above it. */
+.info__note { margin-top: 14px; }
+
+/* Free text of the About level: about.html is written by hand, so the styling
+   covers the few tags such a page needs and nothing more. */
+.about { padding: 10px 0 8px; line-height: 1.45; }
+/* A heading in the file reads as a subheading of the panel, like .group. */
+.about h2 {
+  margin: 26px 0 8px;
+  font-size: 22px; font-weight: 400; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-mute);
+}
+.about h2:first-child { margin-top: 0; }
+.about p { margin: 0 0 14px; overflow-wrap: anywhere; }
+.about ul { margin: 0 0 14px; padding-left: 30px; }
+.about li { margin: 0 0 6px; }
+.about a { color: var(--accent); text-decoration: none; }
+.about code { font-size: 23px; color: var(--text); }
+
+/* ---------- Confirmation dialog ---------- */
+.dialog {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms linear;
+}
+.dialog.is-open { opacity: 1; visibility: visible; }
+
+.dialog__box {
+  width: 860px;
+  padding: 56px 60px 44px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--dialog-1), var(--dialog-2));
+  border: 1px solid var(--line);
+  text-align: center;
+  transform: scale(0.96);
+  transition: transform 160ms ease-out;
+}
+.dialog.is-open .dialog__box { transform: scale(1); }
+.dialog__text { font-size: 38px; margin-bottom: 44px; }
+.dialog__buttons { display: flex; gap: 24px; justify-content: center; }
+.dialog__btn {
+  position: relative;
+  min-width: 260px; padding: 24px 40px;
+  border-radius: 14px;
+  background: var(--hover);
+  font-size: 30px;
+}
+.dialog__btn--danger { background: var(--danger-bg); color: var(--danger-text); }
+.dialog__btn.is-focused::after {
+  content: ""; position: absolute; inset: 0;
+  border: 3px solid var(--focus); border-radius: 14px;
+}
+.dialog__btn--danger.is-focused::after { border-color: var(--danger); }
+
+/* ---------- Toast ---------- */
+/* Six places it can appear (App properties -> two rows: the edge and the side
+   of it). Both halves of the offset are variables, because the slide-in has to
+   come from the nearest edge: down from the top, up from the bottom.
+   The colour is the theme's, and the transparency of the whole app applies to it
+   as well — the balloon is inside .ui, the layer --ui-opacity fades. */
+.toast {
+  --toast-x: -50%;
+  --toast-in: -20px;
+  position: absolute; top: var(--safe); left: 50%;
+  padding: 18px 34px;
+  border-radius: 999px;
+  background: var(--toast-bg);
+  border: 1px solid var(--line);
+  font-size: 28px;
+  transform: translate(var(--toast-x), var(--toast-in));
+  opacity: 0;
+  transition: opacity 160ms linear, transform 160ms ease-out;
+}
+.toast.is-open { opacity: 1; transform: translate(var(--toast-x), 0); }
+
+/* Left and right are measured from the safe edge, so nothing lands under the
+   overscan of a TV; the centring translate goes away with them. */
+html[data-toast-h="left"] .toast { left: var(--safe); right: auto; --toast-x: 0; }
+html[data-toast-h="right"] .toast { left: auto; right: var(--safe); --toast-x: 0; }
+html[data-toast-v="bottom"] .toast { top: auto; bottom: var(--safe); --toast-in: 20px; }
+
+/* Pending balloon: the spinner is the only sign the TV is still working, so it
+   animates transform alone — nothing else here moves. */
+.toast--busy::before {
+  content: "";
+  display: inline-block;
+  width: 26px; height: 26px;
+  margin: 0 16px -4px 0;
+  border: 3px solid var(--track);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: toast-spin 900ms linear infinite;
+}
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Screen-off cover (dev stand-in for the real panel blanking) --- */
+.screen-cover {
+  position: fixed; inset: 0;
+  background: #000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 220ms linear;
+}
+.screen-cover.is-on { opacity: 1; visibility: visible; }
+
+/* Magic Remote pointer: show the hand cursor only while it is active. */
+html[data-cursor="on"] .rail__item,
+html[data-cursor="on"] .row,
+html[data-cursor="on"] .option,
+html[data-cursor="on"] .dialog__btn { cursor: pointer; }
+
+/* ---------- Theme palettes (App properties) ------------------------------- */
+/* Two switches, four combinations: `data-theme` is the mode (dark by default,
+   light when the switch is off) and `data-contrast` replaces the surfaces with
+   plain black or plain white. Every block below only overrides colour
+   variables — nothing else in the CSS knows about themes. */
+html[data-theme="light"] {
+  --panel-1: rgba(245, 247, 250, 0.95);
+  --panel-2: rgba(232, 236, 242, 0.97);
+  --rail-bg: rgba(216, 222, 232, 0.72);
+
+  --text: #101620;
+  --text-dim: #46505f;
+  --text-mute: #6b7480;
+  --text-hot: #000000;
+
+  --line: rgba(16, 22, 32, 0.12);
+  --focus: #10161f;
+
+  --hover: rgba(16, 22, 32, 0.1);
+  --hover-soft: rgba(16, 22, 32, 0.07);
+  --track: rgba(16, 22, 32, 0.22);
+  --track-hot: rgba(16, 22, 32, 0.34);
+  --knob: #ffffff;
+
+  --dialog-1: #f7f9fc;
+  --dialog-2: #e6eaf1;
+  --scrim: rgba(16, 22, 32, 0.42);
+  /* A light surface like every other one here: the balloon takes its text colour
+     from the palette (--text), so a dark background left dark text on dark. */
+  --toast-bg: rgba(247, 249, 252, 0.94);
+  --danger-bg: rgba(224, 87, 77, 0.18);
+  --danger-text: #7d1a12;
+}
+
+/* High contrast, whichever mode is underneath: what both sides share is the
+   selector. On this palette the focused item is filled rather than outlined, and
+   a fill that ignored the chosen colour was the one part of the panel the accent
+   setting could not reach — so here the selector *is* the accent. The accent is
+   written onto <html> by App properties, so it wins over these lines; the yellow
+   is only what a copy with no choice stored ever sees. */
+html[data-contrast="on"] {
+  --accent: #ffd400;
+  --focus: var(--accent);
+  --hover: var(--accent);
+  --hover-soft: var(--accent);
+
+  /* Filled buttons in both modes, so the pair stays as it is either way. */
+  --danger-bg: #7d1a12;
+  --danger-text: #ffffff;
+}
+
+html[data-contrast="on"][data-theme="dark"] {
+  --panel-1: #000000;
+  --panel-2: #000000;
+  --rail-bg: #000000;
+
+  --text: #ffffff;
+  --text-dim: #ffffff;
+  --text-mute: #d0d0d0;
+  /* Text on top of the filled selector: every accent of the list is bright. */
+  --text-hot: #000000;
+
+  --line: rgba(255, 255, 255, 0.4);
+  --track: rgba(255, 255, 255, 0.45);
+  --track-hot: rgba(255, 255, 255, 0.7);
+  --knob: #ffffff;
+
+  --dialog-1: #000000;
+  --dialog-2: #000000;
+  --scrim: rgba(0, 0, 0, 0.8);
+  --toast-bg: #000000;
+}
+
+html[data-contrast="on"][data-theme="light"] {
+  --panel-1: #ffffff;
+  --panel-2: #ffffff;
+  --rail-bg: #ffffff;
+
+  --text: #000000;
+  --text-dim: #000000;
+  --text-mute: #303030;
+  --text-hot: #000000;
+
+  --line: rgba(0, 0, 0, 0.55);
+  --track: rgba(0, 0, 0, 0.5);
+  --track-hot: rgba(0, 0, 0, 0.75);
+  --knob: #000000;
+
+  --dialog-1: #ffffff;
+  --dialog-2: #ffffff;
+  --scrim: rgba(255, 255, 255, 0.8);
+  --toast-bg: #ffffff;
+}
+
+/* The focused row is filled on this palette, so its text flips to whatever reads
+   on the fill instead of staying the colour of the surrounding rows. */
+html[data-contrast="on"] .row.is-focused,
+html[data-contrast="on"] .row.is-focused .row__label,
+html[data-contrast="on"] .row.is-focused .row__value,
+html[data-contrast="on"] .row.is-focused .row__grab,
+html[data-contrast="on"] .row.is-focused .row__chev { color: var(--text-hot); }
+/* Same for the tick of the option under the selector: it is drawn in the accent,
+   which is exactly what the selector is filled with here. */
+html[data-contrast="on"] .option.is-focused .option__check { color: var(--text-hot); }
